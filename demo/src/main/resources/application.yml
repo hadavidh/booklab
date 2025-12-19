@@ -1,0 +1,34 @@
+server:
+  port: 8086
+
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/booklab;DB_CLOSE_ON_EXIT=FALSE
+    driverClassName: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+  h2:
+    console:
+      enabled: true
+
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
+
+app:
+  storage:
+    root: ./storage
+
+  ocr:
+    tessdata-path: "C:/Program Files/Tesseract-OCR/tessdata"
+    language: "heb"
+
+  openai:
+    model: "gpt-5.2"

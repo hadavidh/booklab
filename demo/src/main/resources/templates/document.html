@@ -1,0 +1,72 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/>
+  <title th:text="${doc.title}">Document</title>
+  <style>
+    body{font-family:system-ui,Arial;margin:24px;max-width:1100px}
+    .card{padding:16px;border:1px solid #ddd;border-radius:12px;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;vertical-align:top}
+    .badge{padding:4px 10px;border:1px solid #ccc;border-radius:999px;display:inline-block}
+    img{max-width:220px;border-radius:10px;border:1px solid #eee}
+    .muted{color:#666}
+    button{padding:8px 12px;border-radius:10px;border:1px solid #ccc;background:#fff;cursor:pointer}
+    button:hover{background:#f6f6f6}
+  </style>
+</head>
+<body>
+<a href="/">← Retour</a>
+<h1 th:text="${doc.title}"></h1>
+
+<div class="card">
+  <h2>Traitement</h2>
+
+  <p>
+    Progress: <b th:text="${translatedPages}"></b> / <b th:text="${totalPages}"></b>
+    &nbsp; | &nbsp; Échecs: <b th:text="${failedPages}"></b>
+    &nbsp; | &nbsp; Statut document: <b th:text="${doc.status}"></b>
+  </p>
+
+  <form th:action="@{'/documents/' + ${doc.id} + '/process'}" method="post">
+    <button type="submit">Start Processing (OCR + Traduction)</button>
+  </form>
+
+  <p class="muted" th:if="${doc.status.name() == 'PROCESSING'}">
+    En cours… rafraîchis la page pour voir l’avancement.
+  </p>
+</div>
+
+<div class="card">
+  <h2>Pages</h2>
+
+  <table>
+    <thead>
+      <tr><th>#</th><th>Aperçu</th><th>Status</th><th>OCR</th><th>FR</th><th>Erreur</th></tr>
+    </thead>
+
+    <tbody>
+      <tr th:each="p : ${pages}">
+        <td>
+          <a th:href="@{'/pages/' + ${p.id}}" th:text="${p.pageNumber}"></a>
+        </td>
+
+        <td>
+          <img th:src="@{'/storage/' + ${p.imagePath}}" alt="page"/>
+        </td>
+
+        <td>
+          <span class="badge" th:text="${p.status}"></span>
+        </td>
+
+        <td th:text="${p.ocrText != null ? 'OK' : '-'}"></td>
+        <td th:text="${p.frText != null ? 'OK' : '-'}"></td>
+
+        <td th:text="${p.error != null ? p.error : '-'}"></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>

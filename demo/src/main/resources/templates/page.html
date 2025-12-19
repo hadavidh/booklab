@@ -1,0 +1,44 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/>
+  <title>Page</title>
+  <style>
+    body{font-family:system-ui,Arial;margin:24px;max-width:1100px}
+    .card{padding:16px;border:1px solid #ddd;border-radius:12px;margin-bottom:16px}
+    img{max-width:520px;border-radius:10px;border:1px solid #eee}
+    pre{white-space:pre-wrap}
+    .he{direction:rtl; text-align:right; font-size:18px; line-height:1.6}
+    .fr{direction:ltr; text-align:left; line-height:1.6}
+    .muted{color:#666}
+    .badge{padding:4px 10px;border:1px solid #ccc;border-radius:999px;display:inline-block}
+  </style>
+</head>
+<body>
+<a th:href="@{'/documents/' + ${docId}}">← Retour document</a>
+
+<div class="card">
+  <h2>Image</h2>
+  <p class="muted">
+    Statut: <span class="badge" th:text="${page.status}"></span>
+  </p>
+  <img th:src="@{'/storage/' + ${page.imagePath}}" alt="page"/>
+</div>
+
+<div class="card">
+  <h2>OCR (hébreu)</h2>
+  <pre class="he" th:text="${page.ocrText != null ? page.ocrText : '-'}"></pre>
+</div>
+
+<div class="card">
+  <h2>Traduction (français)</h2>
+  <pre class="fr" th:text="${page.frText != null ? page.frText : '-'}"></pre>
+</div>
+
+<div class="card" th:if="${page.error != null}">
+  <h2>Erreur</h2>
+  <pre th:text="${page.error}"></pre>
+</div>
+
+</body>
+</html>

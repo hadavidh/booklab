@@ -1,0 +1,57 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/>
+  <title>BookLab</title>
+  <style>
+    body{font-family:system-ui,Arial;margin:24px;max-width:1100px}
+    .card{padding:16px;border:1px solid #ddd;border-radius:12px;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #eee;text-align:left}
+    input[type="text"]{padding:8px;width:420px;max-width:100%}
+    .muted{color:#666}
+  </style>
+</head>
+<body>
+<h1>BookLab — Upload de pages (hébreu → français)</h1>
+
+<div class="card">
+  <h2>Nouveau document</h2>
+  <form method="post" action="/documents" enctype="multipart/form-data">
+    <div>
+      <label>Titre: </label>
+      <input type="text" name="title" placeholder="Ex: Bereshit - chapitre 1"/>
+    </div>
+
+    <div style="margin-top:10px">
+      <input type="file" name="files" accept="image/*" multiple required />
+    </div>
+
+    <button style="margin-top:10px" type="submit">Créer + uploader</button>
+  </form>
+
+  <p class="muted">
+    Astuce: nomme tes fichiers <b>page001.jpg, page002.jpg…</b> pour un ordre parfait.
+    Pour 200 pages, on ajoutera l’upload <b>.zip</b>.
+  </p>
+</div>
+
+<div class="card">
+  <h2>Documents</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Titre</th><th>Statut</th><th>Créé</th></tr></thead>
+    <tbody>
+    <tr th:each="d : ${documents}">
+      <td th:text="${d.id}"></td>
+      <td>
+        <a th:href="@{'/documents/' + ${d.id}}" th:text="${d.title}"></a>
+      </td>
+      <td th:text="${d.status}"></td>
+      <td th:text="${d.createdAt}"></td>
+    </tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>
