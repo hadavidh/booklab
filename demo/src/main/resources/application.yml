@@ -7,16 +7,13 @@ spring:
     driverClassName: org.h2.Driver
     username: sa
     password:
-
   jpa:
     hibernate:
       ddl-auto: update
     open-in-view: false
-
   h2:
     console:
       enabled: true
-
   servlet:
     multipart:
       max-file-size: 200MB
@@ -26,9 +23,11 @@ app:
   storage:
     root: ./storage
 
-  ocr:
-    tessdata-path: "C:/Program Files/Tesseract-OCR/tessdata"
-    language: "heb"
-
   openai:
-    model: "gpt-5.2"
+    endpoint: "https://api.openai.com/v1/responses"
+    # modèle pour traduire du texte brut (hébreu -> français)
+    text-model: "gpt-5.2-pro-2025-12-11"
+    # modèle vision pour traduire depuis image
+    vision-model: "gpt-5.2-pro-2025-12-11"
+    timeout-seconds: 500
+    max-output-tokens: 5000

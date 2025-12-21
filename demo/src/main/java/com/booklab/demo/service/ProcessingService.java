@@ -12,64 +12,81 @@ import java.util.List;
 @Service
 public class ProcessingService {
 
-    private final DocumentRepository documentRepo;
-    private final PageRepository pageRepo;
-    private final StorageService storage;
-    private final OcrService ocr;
-    private final OpenAiTranslationService translator;
+  private final DocumentRepository documentRepo;
+  private final PageRepository pageRepo;
+  private final StorageService storage;
+  private final OpenAiResponsesService openai;
 
-    public ProcessingService(DocumentRepository documentRepo,
-                             PageRepository pageRepo,
-                             StorageService storage,
-                             OcrService ocr,
-                             OpenAiTranslationService translator) {
-        this.documentRepo = documentRepo;
-        this.pageRepo = pageRepo;
-        this.storage = storage;
-        this.ocr = ocr;
-        this.translator = translator;
-    }
+  public ProcessingService(DocumentRepository documentRepo,
+                           PageRepository pageRepo,
+                           StorageService storage,
+                           OpenAiResponsesService openai) {
+    this.documentRepo = documentRepo;
+    this.pageRepo = pageRepo;
+    this.storage = storage;
+    this.openai = openai;
+  }
 
-    @Async
-    public void processDocument(Long documentId) {
-        Document doc = documentRepo.findById(documentId).orElseThrow();
+  @Async
+  public void processDocument(Long documentId) {
+    Document doc = documentRepo.findById(documentId).orElseThrow();
 
-        if (doc.getStatus() == DocumentStatus.PROCESSING) return;
+    if (doc.getStatus() == DocumentStatus.PROCESSING) return;
 
-        doc.setStatus(DocumentStatus.PROCESSING);
-        documentRepo.save(doc);
+    doc.setStatus(DocumentStatus.PROCESSING);
+    documentRepo.save(doc);
 
-        List<Page> pages = pageRepo.findByDocumentIdOrderByPageNumberAsc(documentId);
+    List<Page> pages = pageRepo.findByDocumentIdOrderByPageNumberAsc(documentId);
+    boolean anyFailed = false;
 
-        boolean anyFailed = false;
+    try {
+      for (Page p : pages) {
+        if (p.getStatus() == PageStatus.DONE) continue;
 
-        for (Page p : pages) {
-            if (p.getStatus() == PageStatus.TRANSLATED) continue;
+        p.setStatus(PageStatus.PROCESSING);
+        p.setError(null);
+        pageRepo.save(p);
 
-            try {
-                // OCR
-                Path img = storage.resolveAbsolute(p.getImagePath());
-                String heb = ocr.extractText(img);
-                p.setOcrText(heb);
-                p.setStatus(PageStatus.OCR_DONE);
-                p.setError(null);
-                pageRepo.save(p);
+        try {
+          OpenAiResponsesService.ExtractTranslateResult res;
 
-                // Traduction
-                String fr = translator.translateHebrewToFrench(heb);
-                p.setFrText(fr);
-                p.setStatus(PageStatus.TRANSLATED);
-                pageRepo.save(p);
-
-            } catch (Exception e) {
-                anyFailed = true;
-                p.setStatus(PageStatus.FAILED);
-                p.setError(e.getMessage());
-                pageRepo.save(p);
+          if (p.getInputType() == PageInputType.TEXT) {
+            String heb = p.getHebrewInputText();
+            if (heb == null || heb.isBlank()) {
+              throw new IllegalStateException("TEXT page without hebrewInputText");
             }
-        }
+            res = openai.nikudAndTranslateFromText(heb);
+          } else {
+            if (p.getImagePath() == null || p.getImagePath().isBlank()) {
+              throw new IllegalStateException("IMAGE page without imagePath");
+            }
+            Path img = storage.resolveAbsolute(p.getImagePath());
+            res = openai.extractNikudAndTranslateFromImage(img);
+          }
 
-        doc.setStatus(anyFailed ? DocumentStatus.FAILED : DocumentStatus.DONE);
-        documentRepo.save(doc);
+          p.setHebrewPlain(res.hebrewPlain());
+          p.setHebrewNikud(res.hebrewNikud());
+          p.setFrText(res.french());
+          p.setStatus(PageStatus.DONE);
+          pageRepo.save(p);
+
+        } catch (Throwable t) {
+          anyFailed = true;
+          p.setStatus(PageStatus.FAILED);
+          p.setError(shortMsg(t));
+          pageRepo.save(p);
+        }
+      }
+    } finally {
+      doc.setStatus(anyFailed ? DocumentStatus.DONE_WITH_ERRORS : DocumentStatus.DONE);
+      documentRepo.save(doc);
     }
+  }
+
+  private static String shortMsg(Throwable t) {
+    String m = t.getMessage();
+    if (m == null || m.isBlank()) m = t.getClass().getSimpleName();
+    int max = 1200;
+    return m.length() > max ? m.substring(0, max) : m;
+  }
 }

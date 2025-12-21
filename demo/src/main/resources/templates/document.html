@@ -13,57 +13,72 @@
     .muted{color:#666}
     button{padding:8px 12px;border-radius:10px;border:1px solid #ccc;background:#fff;cursor:pointer}
     button:hover{background:#f6f6f6}
+    textarea{width:100%;max-width:100%;min-height:110px;padding:10px}
   </style>
 </head>
 <body>
+
 <a href="/">← Retour</a>
 <h1 th:text="${doc.title}"></h1>
 
 <div class="card">
   <h2>Traitement</h2>
-
   <p>
-    Progress: <b th:text="${translatedPages}"></b> / <b th:text="${totalPages}"></b>
-    &nbsp; | &nbsp; Échecs: <b th:text="${failedPages}"></b>
-    &nbsp; | &nbsp; Statut document: <b th:text="${doc.status}"></b>
+    Progress: <b th:text="${donePages}"></b> / <b th:text="${totalPages}"></b>
+    &nbsp;|&nbsp; Échecs: <b th:text="${failedPages}"></b>
+    &nbsp;|&nbsp; Statut: <b th:text="${doc.status}"></b>
   </p>
 
   <form th:action="@{'/documents/' + ${doc.id} + '/process'}" method="post">
-    <button type="submit">Start Processing (OCR + Traduction)</button>
+    <button type="submit">Start Processing (OpenAI)</button>
   </form>
+</div>
 
-  <p class="muted" th:if="${doc.status.name() == 'PROCESSING'}">
-    En cours… rafraîchis la page pour voir l’avancement.
-  </p>
+<div class="card">
+  <h2>Ajouter une page “texte brut” (optionnel)</h2>
+  <form th:action="@{'/documents/' + ${doc.id} + '/add-text'}" method="post">
+    <textarea name="hebrewText" placeholder="Colle ici ton texte hébreu..."></textarea>
+    <div style="margin-top:10px">
+      <button type="submit">Ajouter</button>
+    </div>
+  </form>
 </div>
 
 <div class="card">
   <h2>Pages</h2>
-
   <table>
     <thead>
-      <tr><th>#</th><th>Aperçu</th><th>Status</th><th>OCR</th><th>FR</th><th>Erreur</th></tr>
+    <tr>
+      <th>#</th>
+      <th>Type</th>
+      <th>Aperçu</th>
+      <th>Status</th>
+      <th>HE</th>
+      <th>NIKUD</th>
+      <th>FR</th>
+      <th>Erreur</th>
+    </tr>
     </thead>
-
     <tbody>
-      <tr th:each="p : ${pages}">
-        <td>
-          <a th:href="@{'/pages/' + ${p.id}}" th:text="${p.pageNumber}"></a>
-        </td>
+    <tr th:each="p : ${pages}">
+      <td><a th:href="@{'/pages/' + ${p.id}}" th:text="${p.pageNumber}"></a></td>
+      <td><span class="badge" th:text="${p.inputType}"></span></td>
 
-        <td>
+      <td>
+        <div th:if="${p.inputType.name() == 'IMAGE'}">
           <img th:src="@{'/storage/' + ${p.imagePath}}" alt="page"/>
-        </td>
+        </div>
+        <div th:if="${p.inputType.name() == 'TEXT'}" class="muted">
+          Texte hébreu…
+        </div>
+      </td>
 
-        <td>
-          <span class="badge" th:text="${p.status}"></span>
-        </td>
-
-        <td th:text="${p.ocrText != null ? 'OK' : '-'}"></td>
-        <td th:text="${p.frText != null ? 'OK' : '-'}"></td>
-
-        <td th:text="${p.error != null ? p.error : '-'}"></td>
-      </tr>
+      <td><span class="badge" th:text="${p.status}"></span></td>
+      <td th:text="${p.hebrewPlain != null && !p.hebrewPlain.isBlank() ? 'OK' : '-'}"></td>
+      <td th:text="${p.hebrewNikud != null && !p.hebrewNikud.isBlank() ? 'OK' : '-'}"></td>
+      <td th:text="${p.frText != null && !p.frText.isBlank() ? 'OK' : '-'}"></td>
+      <td th:text="${p.error != null ? '!' : '-'}"></td>
+    </tr>
     </tbody>
   </table>
 </div>

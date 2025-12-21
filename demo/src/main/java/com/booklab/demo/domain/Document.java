@@ -7,34 +7,32 @@ import java.time.Instant;
 @Table(name = "documents")
 public class Document {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @Column(nullable = false)
-    private String title;
+  @Column(nullable = false)
+  private String title;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private DocumentStatus status = DocumentStatus.UPLOADED;
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  private DocumentStatus status = DocumentStatus.UPLOADED;
 
-    @Column(nullable = false)
-    private Instant createdAt = Instant.now();
+  @Column(nullable = false)
+  private Instant createdAt = Instant.now();
 
-    private Instant updatedAt = Instant.now();
+  private Instant updatedAt = Instant.now();
 
-    @PreUpdate
-    void onUpdate() {
-        this.updatedAt = Instant.now();
-    }
+  @PreUpdate
+  void onUpdate() { this.updatedAt = Instant.now(); }
 
-    public Long getId() { return id; }
+  public Long getId() { return id; }
 
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
+  public String getTitle() { return title; }
+  public void setTitle(String title) { this.title = title; }
 
-    public DocumentStatus getStatus() { return status; }
-    public void setStatus(DocumentStatus status) { this.status = status; }
+  public DocumentStatus getStatus() { return status; }
+  public void setStatus(DocumentStatus status) { this.status = status; }
 
-    public Instant getCreatedAt() { return createdAt; }
-    public Instant getUpdatedAt() { return updatedAt; }
+  public Instant getCreatedAt() { return createdAt; }
+  public Instant getUpdatedAt() { return updatedAt; }
 }

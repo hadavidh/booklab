@@ -11,17 +11,16 @@ import java.nio.file.Paths;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    private final String storageRoot;
+  private final String storageRoot;
 
-    public WebConfig(@Value("${app.storage.root}") String storageRoot) {
-        this.storageRoot = storageRoot;
-    }
+  public WebConfig(@Value("${app.storage.root}") String storageRoot) {
+    this.storageRoot = storageRoot;
+  }
 
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        Path rootPath = Paths.get(storageRoot).toAbsolutePath().normalize();
-        String location = rootPath.toUri().toString(); // file:///C:/.../storage/
-        registry.addResourceHandler("/storage/**")
-                .addResourceLocations(location);
-    }
+  @Override
+  public void addResourceHandlers(ResourceHandlerRegistry registry) {
+    Path rootPath = Paths.get(storageRoot).toAbsolutePath().normalize();
+    registry.addResourceHandler("/storage/**")
+        .addResourceLocations(rootPath.toUri().toString());
+  }
 }

@@ -8,30 +8,51 @@
     .card{padding:16px;border:1px solid #ddd;border-radius:12px;margin-bottom:16px}
     img{max-width:520px;border-radius:10px;border:1px solid #eee}
     pre{white-space:pre-wrap}
-    .he{direction:rtl; text-align:right; font-size:18px; line-height:1.6}
-    .fr{direction:ltr; text-align:left; line-height:1.6}
+    .he{direction:rtl; text-align:right; font-size:18px; line-height:1.7}
+    .fr{direction:ltr; text-align:left; line-height:1.7}
     .muted{color:#666}
     .badge{padding:4px 10px;border:1px solid #ccc;border-radius:999px;display:inline-block}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px}
+    @media(min-width:900px){ .grid{grid-template-columns:1fr 1fr;} }
   </style>
 </head>
 <body>
+
 <a th:href="@{'/documents/' + ${docId}}">← Retour document</a>
 
 <div class="card">
-  <h2>Image</h2>
+  <h2>Page</h2>
   <p class="muted">
+    Type: <span class="badge" th:text="${page.inputType}"></span>
+    &nbsp; | &nbsp;
     Statut: <span class="badge" th:text="${page.status}"></span>
   </p>
-  <img th:src="@{'/storage/' + ${page.imagePath}}" alt="page"/>
+
+  <div th:if="${page.inputType.name() == 'IMAGE'}">
+    <img th:src="@{'/storage/' + ${page.imagePath}}" alt="page"/>
+  </div>
+
+  <div th:if="${page.inputType.name() == 'TEXT'}">
+    <h3>Texte hébreu fourni</h3>
+    <pre class="he" th:text="${page.hebrewInputText != null ? page.hebrewInputText : '-'}"></pre>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>Hébreu extrait (fidèle)</h2>
+    <pre class="he" th:text="${page.hebrewPlain != null ? page.hebrewPlain : '-'}"></pre>
+  </div>
+
+  <div class="card">
+    <h2>Hébreu avec nekoudot (niqqud)</h2>
+    <p class="muted">Si un mot est ambigu, il peut rester sans voyelles.</p>
+    <pre class="he" th:text="${page.hebrewNikud != null ? page.hebrewNikud : '-'}"></pre>
+  </div>
 </div>
 
 <div class="card">
-  <h2>OCR (hébreu)</h2>
-  <pre class="he" th:text="${page.ocrText != null ? page.ocrText : '-'}"></pre>
-</div>
-
-<div class="card">
-  <h2>Traduction (français)</h2>
+  <h2>Traduction française</h2>
   <pre class="fr" th:text="${page.frText != null ? page.frText : '-'}"></pre>
 </div>
 

@@ -91,12 +91,6 @@
           <artifactId>openai-java-client-okhttp</artifactId>
           <version>4.13.0</version>
         </dependency>
-        <!-- OCR (Tess4J) -->
-        <dependency>
-            <groupId>net.sourceforge.tess4j</groupId>
-            <artifactId>tess4j</artifactId>
-            <version>5.17.0</version>
-            </dependency>
 	    </dependencies>
 
 	<build>
