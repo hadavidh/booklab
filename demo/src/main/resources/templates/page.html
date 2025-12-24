@@ -1,65 +1,100 @@
 <!doctype html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
 <head>
-  <meta charset="utf-8"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Page</title>
-  <style>
-    body{font-family:system-ui,Arial;margin:24px;max-width:1100px}
-    .card{padding:16px;border:1px solid #ddd;border-radius:12px;margin-bottom:16px}
-    img{max-width:520px;border-radius:10px;border:1px solid #eee}
-    pre{white-space:pre-wrap}
-    .he{direction:rtl; text-align:right; font-size:18px; line-height:1.7}
-    .fr{direction:ltr; text-align:left; line-height:1.7}
-    .muted{color:#666}
-    .badge{padding:4px 10px;border:1px solid #ccc;border-radius:999px;display:inline-block}
-    .grid{display:grid;grid-template-columns:1fr;gap:12px}
-    @media(min-width:900px){ .grid{grid-template-columns:1fr 1fr;} }
-  </style>
+  <link rel="stylesheet" th:href="@{/app.css}">
 </head>
 <body>
+<div class="container">
 
-<a th:href="@{'/documents/' + ${docId}}">← Retour document</a>
-
-<div class="card">
-  <h2>Page</h2>
-  <p class="muted">
-    Type: <span class="badge" th:text="${page.inputType}"></span>
-    &nbsp; | &nbsp;
-    Statut: <span class="badge" th:text="${page.status}"></span>
-  </p>
-
-  <div th:if="${page.inputType.name() == 'IMAGE'}">
-    <img th:src="@{'/storage/' + ${page.imagePath}}" alt="page"/>
-  </div>
-
-  <div th:if="${page.inputType.name() == 'TEXT'}">
-    <h3>Texte hébreu fourni</h3>
-    <pre class="he" th:text="${page.hebrewInputText != null ? page.hebrewInputText : '-'}"></pre>
-  </div>
-</div>
-
-<div class="grid">
-  <div class="card">
-    <h2>Hébreu extrait (fidèle)</h2>
-    <pre class="he" th:text="${page.hebrewPlain != null ? page.hebrewPlain : '-'}"></pre>
+  <div class="topbar">
+    <a class="link" th:if="${docId != null}" th:href="@{/documents/{id}(id=${docId})}">← Retour document</a>
+    <div class="brand">
+      <div class="logo"></div>
+      <div>BookLab</div>
+    </div>
   </div>
 
   <div class="card">
-    <h2>Hébreu avec nekoudot (niqqud)</h2>
-    <p class="muted">Si un mot est ambigu, il peut rester sans voyelles.</p>
-    <pre class="he" th:text="${page.hebrewNikud != null ? page.hebrewNikud : '-'}"></pre>
+    <div class="row" style="justify-content:space-between;align-items:flex-start">
+      <div>
+        <div class="h1">Page</div>
+        <div class="row" style="margin-top:10px">
+          <span class="badge"><span class="dot"></span><span th:text="'Type: ' + ${page.inputType}"></span></span>
+          <span class="badge"
+                th:classappend="${page.status.name() == 'DONE' ? ' b-done' : (page.status.name() == 'PROCESSING' ? ' b-proc' : (page.status.name() == 'FAILED' ? ' b-err' : ''))}">
+            <span class="dot"></span>
+            <span th:text="'Statut: ' + ${page.status}"></span>
+          </span>
+        </div>
+      </div>
+
+      <div style="min-width:260px">
+        <div th:if="${msg != null}" class="alert ok" th:text="${msg}"></div>
+        <div th:if="${err != null}" class="alert err" th:text="${err}"></div>
+      </div>
+    </div>
+
+    <form method="post"
+          th:action="@{/pages/{id}/edit(id=${page.id})}"
+          style="margin-top:14px">
+
+      <div>
+        <div class="h2">Texte hébreu fourni</div>
+        <textarea class="textarea he"
+                  dir="rtl"
+                  name="hebrewInputText"
+                  th:disabled="${!isTextPage}"
+                  th:text="${page.hebrewInputText}"></textarea>
+        <div class="muted" th:if="${!isTextPage}" style="margin-top:8px">
+          Page IMAGE : non éditable ici (tu peux éditer seulement les pages TEXT).
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:1fr; margin-top:14px">
+        <div class="grid" style="grid-template-columns:1fr; gap:14px">
+          <div class="card" style="margin:0">
+            <div class="h2">Hébreu extrait (hebrew_plain)</div>
+            <textarea class="textarea he"
+                      dir="rtl"
+                      name="hebrewPlain"
+                      th:disabled="${!isTextPage}"
+                      th:text="${page.hebrewPlain}"></textarea>
+          </div>
+
+          <div class="card" style="margin:0">
+            <div class="h2">Hébreu avec nekoudot (hebrew_niqqud)</div>
+            <textarea class="textarea he"
+                      dir="rtl"
+                      name="hebrewNikud"
+                      th:disabled="${!isTextPage}"
+                      th:text="${page.hebrewNikud}"></textarea>
+            <div class="muted">Si un mot est ambigu, il peut rester sans voyelles.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px">
+        <div class="h2">Traduction française</div>
+        <textarea class="textarea"
+                  name="frText"
+                  th:disabled="${!isTextPage}"
+                  th:text="${page.frText}"></textarea>
+      </div>
+
+      <div class="row" style="margin-top:14px">
+        <button class="btn btn-primary"
+                type="submit"
+                th:disabled="${!isTextPage}">
+          Enregistrer
+        </button>
+      </div>
+
+    </form>
   </div>
-</div>
 
-<div class="card">
-  <h2>Traduction française</h2>
-  <pre class="fr" th:text="${page.frText != null ? page.frText : '-'}"></pre>
 </div>
-
-<div class="card" th:if="${page.error != null}">
-  <h2>Erreur</h2>
-  <pre th:text="${page.error}"></pre>
-</div>
-
 </body>
 </html>

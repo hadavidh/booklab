@@ -1,51 +1,76 @@
 package com.booklab.demo.service;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.nio.file.*;
-import java.util.Locale;
 
 @Service
 public class StorageService {
 
-  private final Path root;
+    private final Path root;
 
-  public StorageService(@Value("${app.storage.root}") String rootDir) {
-    this.root = Paths.get(rootDir).toAbsolutePath().normalize();
-  }
-
-  public String savePageImage(Long docId, int pageNumber, MultipartFile file) throws IOException {
-    Files.createDirectories(root);
-
-    String docFolder = "doc-" + docId;
-    Path docDir = root.resolve(docFolder);
-    Files.createDirectories(docDir);
-
-    String ext = guessExt(file.getOriginalFilename());
-    String filename = String.format(Locale.ROOT, "page-%03d.%s", pageNumber, ext);
-    Path target = docDir.resolve(filename).normalize();
-
-    try (var in = file.getInputStream()) {
-      Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+    public StorageService(@Value("${app.storage.root:data}") String rootDir) {
+        this.root = Paths.get(rootDir).toAbsolutePath().normalize();
+        try {
+            Files.createDirectories(this.root);
+        } catch (IOException e) {
+            throw new RuntimeException("Cannot create storage root: " + this.root, e);
+        }
     }
 
-    return docFolder + "/" + filename;
-  }
+    public String savePageImage(Long docId, int pageNumber, MultipartFile file) throws IOException {
+        String folder = "doc-" + docId;
+        Path dir = root.resolve(folder);
+        Files.createDirectories(dir);
 
-  public Path resolveAbsolute(String relativePath) {
-    return root.resolve(relativePath).toAbsolutePath().normalize();
-  }
+        String filename = "page-" + pageNumber + getSafeExt(file.getOriginalFilename());
+        Path dest = dir.resolve(filename);
 
-  private String guessExt(String name) {
-    if (name == null) return "jpg";
-    String lower = name.toLowerCase(Locale.ROOT);
-    if (lower.endsWith(".png")) return "png";
-    if (lower.endsWith(".webp")) return "webp";
-    if (lower.endsWith(".jpeg")) return "jpeg";
-    if (lower.endsWith(".jpg")) return "jpg";
-    return "jpg";
-  }
+        try (var in = file.getInputStream()) {
+            Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        return folder + "/" + filename;
+    }
+
+    public String saveDocumentPdf(Long docId, byte[] pdfBytes) throws IOException {
+        String folder = "doc-" + docId;
+        Path dir = root.resolve(folder);
+        Files.createDirectories(dir);
+
+        String filename = "export.pdf";
+        Path dest = dir.resolve(filename);
+        Files.write(dest, pdfBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+
+        return folder + "/" + filename;
+    }
+
+    public Path resolvePath(String relativePath) {
+        return root.resolve(relativePath).normalize();
+    }
+
+    public Resource loadAsResource(String relativePath) {
+        try {
+            Path file = resolvePath(relativePath);
+            if (!Files.exists(file)) return null;
+            UrlResource res = new UrlResource(file.toUri());
+            return res.exists() ? res : null;
+        } catch (MalformedURLException e) {
+            return null;
+        }
+    }
+
+    private static String getSafeExt(String original) {
+        if (original == null) return ".bin";
+        String lower = original.toLowerCase();
+        if (lower.endsWith(".png")) return ".png";
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return ".jpg";
+        return ".bin";
+    }
 }

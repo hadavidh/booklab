@@ -1,4 +1,0 @@
-2025-12-21 14:32:32.832977+01:00 jdbc[3]: exception
-org.h2.jdbc.JdbcSQLDataException: Valeur trop longue pour la colonne "ERROR CHARACTER VARYING(255)": "'Vision extract/translate failed: OpenAI API error 400: Unsupported parameter: '... (308)"
-Value too long for column "ERROR CHARACTER VARYING(255)": "'Vision extract/translate failed: OpenAI API error 400: Unsupported parameter: '... (308)"; SQL statement:
-update pages set document_id=?,error=?,fr_text=?,hebrew_input_text=?,hebrew_nikud=?,hebrew_plain=?,image_path=?,input_type=?,page_number=?,status=? where id=? [22001-240]

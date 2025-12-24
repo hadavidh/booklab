@@ -3,80 +3,78 @@ package com.booklab.demo.domain;
 import jakarta.persistence.*;
 
 @Entity
-@Table(
-    name = "pages",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"document_id", "page_number"})
-)
+@Table(name = "pages")
 public class Page {
 
-  @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  @ManyToOne(optional = false, fetch = FetchType.LAZY)
-  @JoinColumn(name = "document_id", nullable = false)
-  private Document document;
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    private Document document;
 
-  @Column(name = "page_number", nullable = false)
-  private int pageNumber;
+    @Column(nullable = false)
+    private Integer pageNumber;
 
-  // IMAGE: chemin fichier (nullable si TEXT)
-  private String imagePath;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PageInputType inputType = PageInputType.IMAGE;
 
-  // TEXT: texte hébreu fourni (nullable si IMAGE)
-  @Lob
-  private String hebrewInputText;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PageStatus status = PageStatus.PENDING;
 
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
-  private PageInputType inputType = PageInputType.IMAGE;
+    // IMAGE: chemin relatif (ex: doc-3/page-1.jpg)
+    private String imagePath;
 
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
-  private PageStatus status = PageStatus.PENDING;
+    // TEXT: texte hebreu fourni
+    @Lob
+    private String hebrewInputText;
 
-  // Sorties OpenAI
-  @Lob
-  private String hebrewPlain;
+    // résultats (longs)
+    @Lob
+    private String hebrewPlain;
 
-  @Lob
-  private String hebrewNikud;
+    @Lob
+    private String hebrewNikud;
 
-  @Lob
-  private String frText;
+    @Lob
+    private String frText;
 
-  // erreur longue possible -> CLOB
-  @Lob
-  private String error;
+    @Column(length = 4000)
+    private String error;
 
-  public Long getId() { return id; }
+    // getters/setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-  public Document getDocument() { return document; }
-  public void setDocument(Document document) { this.document = document; }
+    public Document getDocument() { return document; }
+    public void setDocument(Document document) { this.document = document; }
 
-  public int getPageNumber() { return pageNumber; }
-  public void setPageNumber(int pageNumber) { this.pageNumber = pageNumber; }
+    public Integer getPageNumber() { return pageNumber; }
+    public void setPageNumber(Integer pageNumber) { this.pageNumber = pageNumber; }
 
-  public String getImagePath() { return imagePath; }
-  public void setImagePath(String imagePath) { this.imagePath = imagePath; }
+    public PageInputType getInputType() { return inputType; }
+    public void setInputType(PageInputType inputType) { this.inputType = inputType; }
 
-  public String getHebrewInputText() { return hebrewInputText; }
-  public void setHebrewInputText(String hebrewInputText) { this.hebrewInputText = hebrewInputText; }
+    public PageStatus getStatus() { return status; }
+    public void setStatus(PageStatus status) { this.status = status; }
 
-  public PageInputType getInputType() { return inputType; }
-  public void setInputType(PageInputType inputType) { this.inputType = inputType; }
+    public String getImagePath() { return imagePath; }
+    public void setImagePath(String imagePath) { this.imagePath = imagePath; }
 
-  public PageStatus getStatus() { return status; }
-  public void setStatus(PageStatus status) { this.status = status; }
+    public String getHebrewInputText() { return hebrewInputText; }
+    public void setHebrewInputText(String hebrewInputText) { this.hebrewInputText = hebrewInputText; }
 
-  public String getHebrewPlain() { return hebrewPlain; }
-  public void setHebrewPlain(String hebrewPlain) { this.hebrewPlain = hebrewPlain; }
+    public String getHebrewPlain() { return hebrewPlain; }
+    public void setHebrewPlain(String hebrewPlain) { this.hebrewPlain = hebrewPlain; }
 
-  public String getHebrewNikud() { return hebrewNikud; }
-  public void setHebrewNikud(String hebrewNikud) { this.hebrewNikud = hebrewNikud; }
+    public String getHebrewNikud() { return hebrewNikud; }
+    public void setHebrewNikud(String hebrewNikud) { this.hebrewNikud = hebrewNikud; }
 
-  public String getFrText() { return frText; }
-  public void setFrText(String frText) { this.frText = frText; }
+    public String getFrText() { return frText; }
+    public void setFrText(String frText) { this.frText = frText; }
 
-  public String getError() { return error; }
-  public void setError(String error) { this.error = error; }
+    public String getError() { return error; }
+    public void setError(String error) { this.error = error; }
 }

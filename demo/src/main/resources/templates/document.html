@@ -1,87 +1,233 @@
-<!doctype html>
+<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-  <meta charset="utf-8"/>
+  <meta charset="UTF-8"/>
   <title th:text="${doc.title}">Document</title>
   <style>
-    body{font-family:system-ui,Arial;margin:24px;max-width:1100px}
-    .card{padding:16px;border:1px solid #ddd;border-radius:12px;margin-bottom:16px}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;vertical-align:top}
-    .badge{padding:4px 10px;border:1px solid #ccc;border-radius:999px;display:inline-block}
-    img{max-width:220px;border-radius:10px;border:1px solid #eee}
-    .muted{color:#666}
-    button{padding:8px 12px;border-radius:10px;border:1px solid #ccc;background:#fff;cursor:pointer}
-    button:hover{background:#f6f6f6}
-    textarea{width:100%;max-width:100%;min-height:110px;padding:10px}
+    :root{
+      --bg1:#050817;
+      --bg2:#081a1c;
+      --card:rgba(255,255,255,.06);
+      --card2:rgba(255,255,255,.04);
+      --border:rgba(255,255,255,.10);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.65);
+      --accent:#8b5cf6;
+      --accent2:#22d3ee;
+      --ok:#34d399;
+      --warn:#fbbf24;
+      --bad:#fb7185;
+      --shadow: 0 14px 40px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      background:
+        radial-gradient(1200px 700px at 15% 10%, rgba(139,92,246,.35), transparent 60%),
+        radial-gradient(900px 600px at 85% 5%, rgba(34,211,238,.25), transparent 55%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      min-height:100vh;
+      padding:28px 22px 40px;
+    }
+    a{color:#7dd3fc;text-decoration:none}
+    a:hover{opacity:.9}
+    .wrap{max-width:1200px;margin:0 auto}
+    .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    .title h1{margin:0;font-size:28px;letter-spacing:.2px}
+    .title .sub{color:var(--muted);margin-top:6px;font-size:13px}
+    .btn{
+      display:inline-flex;align-items:center;gap:10px;
+      background:rgba(255,255,255,.06);
+      border:1px solid var(--border);
+      color:var(--text);
+      padding:10px 14px;border-radius:14px;
+      cursor:pointer;
+      transition:.15s transform, .15s opacity, .15s background;
+      box-shadow: 0 10px 20px rgba(0,0,0,.15);
+    }
+    .btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.08)}
+    .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+    .btn-primary{
+      background:linear-gradient(135deg, rgba(139,92,246,.95), rgba(34,211,238,.65));
+      border-color:rgba(255,255,255,.12);
+    }
+
+    .grid{display:grid;grid-template-columns: 1.1fr .9fr; gap:16px; margin-bottom:16px}
+    .card{
+      background:linear-gradient(180deg, var(--card), var(--card2));
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:16px 16px 14px;
+      backdrop-filter: blur(10px);
+    }
+    .card h2{margin:0 0 12px 0;font-size:16px}
+    .muted{color:var(--muted)}
+    .chips{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 10px}
+    .chip{
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.04);
+      border-radius:999px;
+      padding:8px 10px;
+      font-size:12px;
+      color:var(--muted);
+    }
+    .chip strong{color:var(--text)}
+    .flash{border-radius:14px;padding:10px 12px;border:1px solid var(--border);margin-top:10px}
+    .flash.success{background:rgba(52,211,153,.10);border-color:rgba(52,211,153,.25)}
+    .flash.error{background:rgba(251,113,133,.10);border-color:rgba(251,113,133,.25)}
+
+    table{width:100%;border-collapse:separate;border-spacing:0 10px;margin-top:10px}
+    th{font-size:12px;color:var(--muted);font-weight:600;text-align:left;padding:0 10px}
+    td{
+      background:rgba(255,255,255,.04);
+      border:1px solid var(--border);
+      padding:12px 10px;
+      vertical-align:top;
+    }
+    tr td:first-child{border-top-left-radius:14px;border-bottom-left-radius:14px}
+    tr td:last-child{border-top-right-radius:14px;border-bottom-right-radius:14px}
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      border:1px solid var(--border);
+      background:rgba(0,0,0,.12);
+      padding:6px 10px;border-radius:999px;
+      font-size:12px;color:var(--muted);
+    }
+    .dot{width:8px;height:8px;border-radius:50%}
+    .dot.ok{background:var(--ok)}
+    .dot.warn{background:var(--warn)}
+    .dot.bad{background:var(--bad)}
+    .preview{width:120px;border-radius:14px;border:1px solid rgba(255,255,255,.10)}
+    textarea{
+      width:100%;
+      min-height:90px;
+      resize:vertical;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background:rgba(0,0,0,.22);
+      color:var(--text);
+      padding:10px 12px;
+      outline:none;
+    }
   </style>
 </head>
 <body>
+<div class="wrap">
 
-<a href="/">← Retour</a>
-<h1 th:text="${doc.title}"></h1>
-
-<div class="card">
-  <h2>Traitement</h2>
-  <p>
-    Progress: <b th:text="${donePages}"></b> / <b th:text="${totalPages}"></b>
-    &nbsp;|&nbsp; Échecs: <b th:text="${failedPages}"></b>
-    &nbsp;|&nbsp; Statut: <b th:text="${doc.status}"></b>
-  </p>
-
-  <form th:action="@{'/documents/' + ${doc.id} + '/process'}" method="post">
-    <button type="submit">Start Processing (OpenAI)</button>
-  </form>
-</div>
-
-<div class="card">
-  <h2>Ajouter une page “texte brut” (optionnel)</h2>
-  <form th:action="@{'/documents/' + ${doc.id} + '/add-text'}" method="post">
-    <textarea name="hebrewText" placeholder="Colle ici ton texte hébreu..."></textarea>
-    <div style="margin-top:10px">
-      <button type="submit">Ajouter</button>
+  <div class="topbar">
+    <a class="btn" th:href="@{'/'}">← Retour</a>
+    <div class="title" style="text-align:right">
+      <h1 th:text="${doc.title}">Document</h1>
+      <div class="sub">Document <span th:text="${doc.id}">#</span></div>
     </div>
-  </form>
-</div>
+  </div>
 
-<div class="card">
-  <h2>Pages</h2>
-  <table>
-    <thead>
-    <tr>
-      <th>#</th>
-      <th>Type</th>
-      <th>Aperçu</th>
-      <th>Status</th>
-      <th>HE</th>
-      <th>NIKUD</th>
-      <th>FR</th>
-      <th>Erreur</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr th:each="p : ${pages}">
-      <td><a th:href="@{'/pages/' + ${p.id}}" th:text="${p.pageNumber}"></a></td>
-      <td><span class="badge" th:text="${p.inputType}"></span></td>
+  <div class="grid">
+    <div class="card">
+      <h2>Traitement</h2>
 
-      <td>
-        <div th:if="${p.inputType.name() == 'IMAGE'}">
-          <img th:src="@{'/storage/' + ${p.imagePath}}" alt="page"/>
+      <div class="chips">
+        <div class="chip">Terminées: <strong th:text="${donePages}">0</strong></div>
+        <div class="chip">Échecs: <strong th:text="${failedPages}">0</strong></div>
+        <div class="chip">Total: <strong th:text="${totalPages}">0</strong></div>
+      </div>
+
+      <div class="pill" style="margin-bottom:12px">
+        <span class="dot" th:classappend="${doc.status.name() == 'DONE' ? ' ok' : (doc.status.name() == 'PROCESSING' ? ' warn' : ' bad')}"></span>
+        <span th:text="${doc.status}">STATUS</span>
+      </div>
+
+      <div style="display:flex; gap:12px; flex-wrap:wrap">
+        <form th:action="@{'/documents/' + ${doc.id} + '/process'}" method="post">
+          <button class="btn btn-primary" type="submit">Lancer traitement OPEN AI</button>
+        </form>
+
+        <form th:action="@{'/documents/' + ${doc.id} + '/pdf'}" method="post">
+          <button class="btn" type="submit" th:disabled="${doc.status.name() == 'PROCESSING'}">📄 Générer / Régénérer PDF</button>
+        </form>
+
+        <a th:if="${doc.pdfPath != null}" class="btn"
+           th:href="@{'/documents/' + ${doc.id} + '/pdf'}">
+          📥 Télécharger PDF
+        </a>
+        <span th:if="${doc.pdfPath == null}" class="muted" style="align-self:center">
+          (PDF non généré ou obsolète)
+        </span>
+      </div>
+
+      <div class="flash success" th:if="${msg}" th:text="${msg}"></div>
+      <div class="flash error" th:if="${err}" th:text="${err}"></div>
+    </div>
+
+    <div class="card">
+      <h2>Ajouter une page “texte brut”</h2>
+      <div class="muted" style="margin-bottom:10px">
+        Colle du texte hébreu si tu n’as pas d’image. Tu pourras éditer ensuite.
+      </div>
+      <form th:action="@{'/documents/' + ${doc.id} + '/add-text'}" method="post">
+        <textarea name="hebrewInputText" placeholder="Colle ton texte hébreu ici..."></textarea>
+        <div style="margin-top:10px">
+          <button class="btn" type="submit">Ajouter</button>
         </div>
-        <div th:if="${p.inputType.name() == 'TEXT'}" class="muted">
-          Texte hébreu…
-        </div>
-      </td>
+      </form>
+    </div>
+  </div>
 
-      <td><span class="badge" th:text="${p.status}"></span></td>
-      <td th:text="${p.hebrewPlain != null && !p.hebrewPlain.isBlank() ? 'OK' : '-'}"></td>
-      <td th:text="${p.hebrewNikud != null && !p.hebrewNikud.isBlank() ? 'OK' : '-'}"></td>
-      <td th:text="${p.frText != null && !p.frText.isBlank() ? 'OK' : '-'}"></td>
-      <td th:text="${p.error != null ? '!' : '-'}"></td>
-    </tr>
-    </tbody>
-  </table>
+  <div class="card">
+    <h2>Pages</h2>
+    <table>
+      <thead>
+      <tr>
+        <th>#</th>
+        <th>Type</th>
+        <th>Aperçu</th>
+        <th>Statut</th>
+        <th>HE</th>
+        <th>NIKUD</th>
+        <th>FR</th>
+        <th>Err</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="p : ${pages}">
+        <td>
+          <a class="pill" th:href="@{'/pages/' + ${p.id}}">
+            <strong th:text="${p.pageNumber}">1</strong>
+          </a>
+        </td>
+        <td>
+          <span class="pill">
+            <span class="dot ok"></span>
+            <span th:text="${p.inputType}">TYPE</span>
+          </span>
+        </td>
+        <td>
+          <div th:if="${p.inputType.name() == 'IMAGE'}">
+            <img class="preview" th:src="@{'/storage/' + ${p.imagePath}}" alt="preview"/>
+          </div>
+          <div th:if="${p.inputType.name() == 'TEXT'}" class="muted">
+            Texte hébreu (brut)... (editable)
+          </div>
+        </td>
+        <td>
+          <span class="pill">
+            <span class="dot" th:classappend="${p.status.name() == 'DONE' ? ' ok' : (p.status.name() == 'PROCESSING' ? ' warn' : ' bad')}"></span>
+            <span th:text="${p.status}">STATUS</span>
+          </span>
+        </td>
+        <td th:text="${p.hebrewPlain != null ? 'OK' : '-'}">-</td>
+        <td th:text="${p.hebrewNikud != null ? 'OK' : '-'}">-</td>
+        <td th:text="${p.frText != null ? 'OK' : '-'}">-</td>
+        <td class="muted" th:text="${p.error != null ? p.error : '-'}">-</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
 </div>
-
 </body>
 </html>

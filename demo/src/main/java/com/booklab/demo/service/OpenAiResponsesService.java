@@ -6,226 +6,184 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.net.http.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.*;
 
-import java.util.Base64;
-
 @Service
 public class OpenAiResponsesService {
 
-  public record ExtractTranslateResult(String hebrewPlain, String hebrewNikud, String french) {}
+    public record ExtractTranslateResult(String hebrewPlain, String hebrewNikud, String frText) {}
 
-  private final HttpClient http;
-  private final ObjectMapper mapper = new ObjectMapper();
+    private final HttpClient http;
+    private final ObjectMapper om = new ObjectMapper();
+    private final String apiKey;
+    private final String model;
 
-  private final URI endpoint;
-  private final String textModel;
-  private final String visionModel;
-  private final int timeoutSeconds;
-  private final int maxOutputTokens;
+    public OpenAiResponsesService(
+            @Value("${app.openai.model:gpt-5-mini}") String model,
+            @Value("${app.openai.apiKey:}") String apiKeyProp
+    ) {
+        this.http = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(20))
+                .build();
 
-  public OpenAiResponsesService(
-      @Value("${app.openai.endpoint}") String endpoint,
-      @Value("${app.openai.text-model}") String textModel,
-      @Value("${app.openai.vision-model}") String visionModel,
-      @Value("${app.openai.timeout-seconds:120}") int timeoutSeconds,
-      @Value("${app.openai.max-output-tokens:3500}") int maxOutputTokens
-  ) {
-    this.endpoint = URI.create(endpoint);
-    this.textModel = textModel;
-    this.visionModel = visionModel;
-    this.timeoutSeconds = timeoutSeconds;
-    this.maxOutputTokens = maxOutputTokens;
+        String env = System.getenv("OPENAI_API_KEY");
+        this.apiKey = (apiKeyProp != null && !apiKeyProp.isBlank()) ? apiKeyProp : env;
 
-    this.http = HttpClient.newBuilder()
-        .connectTimeout(Duration.ofSeconds(30))
-        .build();
-  }
-
-  /** IMAGE -> JSON: hebrew_plain + hebrew_niqqud + french */
-  public ExtractTranslateResult extractNikudAndTranslateFromImage(Path imagePath) {
-    try {
-      byte[] bytes = Files.readAllBytes(imagePath);
-      String mime = detectMime(imagePath);
-      String dataUrl = "data:" + mime + ";base64," + Base64.getEncoder().encodeToString(bytes);
-
-      String instruction = """
-      Tu es un expert de transcription hébraïque + vocalisation + traduction.
-      Retourne un JSON STRICT (aucun texte hors JSON) avec exactement ces clés:
-      - hebrew_plain : transcription EXACTE du texte hébreu tel qu'il apparaît (ponctuation + retours à la ligne).
-      - hebrew_niqqud : même texte mais avec nekoudot/niqqud. IMPORTANT: si tu n'es pas sûr d'un mot, laisse ce mot SANS voyelles plutôt que d'inventer.
-      - french : traduction française fidèle, claire, en conservant la structure (retours à la ligne, citations, numéros). Sans explications.
-      """;
-
-      Map<String, Object> message = new LinkedHashMap<>();
-      message.put("role", "user");
-
-      List<Map<String, Object>> content = new ArrayList<>();
-      content.add(Map.of("type", "input_text", "text", instruction));
-      content.add(Map.of("type", "input_image", "image_url", dataUrl));
-      message.put("content", content);
-
-      Map<String, Object> body = new LinkedHashMap<>();
-      body.put("model", visionModel);
-      body.put("input", List.of(message));
-      body.put("max_output_tokens", maxOutputTokens);
-      body.put("store", false);
-
-      // ✅ Responses API structured outputs JSON mode
-      body.put("text", Map.of("format", Map.of("type", "json_object")));
-
-      String out = callResponses(body);
-      return parseResultJson(out);
-
-    } catch (Exception e) {
-      throw new RuntimeException("Vision extract/translate failed: " + e.getMessage(), e);
-    }
-  }
-
-  /** TEXT -> JSON: hebrew_plain + hebrew_niqqud + french */
-  public ExtractTranslateResult nikudAndTranslateFromText(String hebrewText) {
-    if (hebrewText == null || hebrewText.isBlank()) {
-      return new ExtractTranslateResult("", "", "");
-    }
-
-    String instruction = """
-    Tu es un expert hébreu (niqqud) + traducteur (hébreu → français).
-    Retourne un JSON STRICT (aucun texte hors JSON) avec exactement ces clés:
-    - hebrew_plain : le texte hébreu tel quel (conserve retours à la ligne)
-    - hebrew_niqqud : version avec nekoudot/niqqud. IMPORTANT: si tu n'es pas sûr d'un mot, laisse ce mot SANS voyelles plutôt que d'inventer.
-    - french : traduction française fidèle, claire, même structure, sans explications.
-    TEXTE HÉBREU:
-    """ + hebrewText;
-
-    Map<String, Object> body = new LinkedHashMap<>();
-    body.put("model", textModel);
-    body.put("input", instruction);
-    body.put("max_output_tokens", maxOutputTokens);
-    body.put("store", false);
-
-    // ✅ Responses API structured outputs JSON mode
-    body.put("text", Map.of("format", Map.of("type", "json_object")));
-
-    String out = callResponses(body);
-    return parseResultJson(out);
-  }
-
-  private ExtractTranslateResult parseResultJson(String maybeJson) {
-    try {
-      String candidate = extractFirstJsonObject((maybeJson == null) ? "" : maybeJson.trim());
-      JsonNode root = mapper.readTree(candidate);
-
-      String hebPlain = root.path("hebrew_plain").asText("");
-      String hebNikud = root.path("hebrew_niqqud").asText("");
-      String fr = root.path("french").asText("");
-
-      return new ExtractTranslateResult(hebPlain, hebNikud, fr);
-
-    } catch (Exception e) {
-      String head = (maybeJson == null) ? "" : maybeJson.substring(0, Math.min(400, maybeJson.length()));
-      throw new RuntimeException("OpenAI JSON parse failed. Output starts with: " + head, e);
-    }
-  }
-
-  private String extractFirstJsonObject(String s) {
-    int start = s.indexOf('{');
-    int end = s.lastIndexOf('}');
-    if (start >= 0 && end > start) return s.substring(start, end + 1);
-    return s;
-  }
-
-  private String callResponses(Map<String, Object> payload) {
-    String apiKey = System.getenv("OPENAI_API_KEY");
-    if (apiKey == null || apiKey.isBlank()) {
-      throw new RuntimeException("OPENAI_API_KEY missing (env var).");
-    }
-
-    try {
-      String json = mapper.writeValueAsString(payload);
-
-      HttpRequest req = HttpRequest.newBuilder(endpoint)
-          .timeout(Duration.ofSeconds(timeoutSeconds))
-          .header("Authorization", "Bearer " + apiKey)
-          .header("Content-Type", "application/json")
-          .POST(HttpRequest.BodyPublishers.ofString(json))
-          .build();
-
-      HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
-      int status = res.statusCode();
-      String body = res.body() == null ? "" : res.body();
-
-      if (status < 200 || status >= 300) {
-        throw new OpenAiApiException(status, extractErrorMessage(body));
-      }
-
-      return extractOutputText(body);
-
-    } catch (OpenAiApiException e) {
-      throw e;
-    } catch (Exception e) {
-      throw new RuntimeException("OpenAI request failed: " + e.getMessage(), e);
-    }
-  }
-
-  private String extractOutputText(String responseJson) throws Exception {
-    JsonNode root = mapper.readTree(responseJson);
-    JsonNode output = root.path("output");
-
-    StringBuilder sb = new StringBuilder();
-    if (output.isArray()) {
-      for (JsonNode item : output) {
-        if (!"message".equals(item.path("type").asText())) continue;
-
-        JsonNode content = item.path("content");
-        if (!content.isArray()) continue;
-
-        for (JsonNode part : content) {
-          if ("output_text".equals(part.path("type").asText())) {
-            sb.append(part.path("text").asText(""));
-          }
+        if (this.apiKey == null || this.apiKey.isBlank()) {
+            throw new IllegalStateException("OPENAI_API_KEY manquant (env) ou app.openai.apiKey (properties/yml).");
         }
-      }
+
+        this.model = model;
     }
-    return sb.toString().trim();
-  }
 
-  private String extractErrorMessage(String body) {
-    try {
-      JsonNode root = mapper.readTree(body);
-      JsonNode err = root.path("error");
-      if (err.isMissingNode()) return body;
-      String msg = err.path("message").asText("");
-      return msg.isBlank() ? body : msg;
-    } catch (Exception ignore) {
-      return body;
+    public ExtractTranslateResult extractTranslateFromImage(Path imagePath) throws Exception {
+        byte[] bytes = Files.readAllBytes(imagePath);
+        String base64 = Base64.getEncoder().encodeToString(bytes);
+
+        String mime = guessMime(imagePath);
+        String dataUrl = "data:" + mime + ";base64," + base64;
+
+        String instructions =
+                "Tu es un expert en hébreu (textes religieux) et en traduction française.\n" +
+                "Objectif: extraire le texte hébreu de l'image, produire une version avec niqqud, et traduire en français.\n" +
+                "Réponds STRICTEMENT en JSON valide, sans texte autour.\n" +
+                "Clés attendues: hebrew_plain, hebrew_niqqud, french.\n" +
+                "Conserve la structure (retours à la ligne). Ne rajoute pas d'explications.";
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("model", model);
+        payload.put("instructions", instructions);
+
+        // input = [{role:user, content:[{input_text},{input_image}]}]
+        List<Object> input = new ArrayList<>();
+        Map<String, Object> msg = new LinkedHashMap<>();
+        msg.put("role", "user");
+
+        List<Object> content = new ArrayList<>();
+        content.add(Map.of("type", "input_text", "text", "Analyse cette page et retourne le JSON demandé."));
+        content.add(Map.of("type", "input_image", "image_url", dataUrl));
+        msg.put("content", content);
+
+        input.add(msg);
+        payload.put("input", input);
+
+        String out = callResponses(payload);
+        JsonNode json = parseJsonObject(out);
+
+        return new ExtractTranslateResult(
+                safeText(json, "hebrew_plain"),
+                safeText(json, "hebrew_niqqud"),
+                safeText(json, "french")
+        );
     }
-  }
 
-  private String detectMime(Path p) {
-    try {
-      String mime = Files.probeContentType(p);
-      if (mime != null && !mime.isBlank()) return mime;
-    } catch (Exception ignore) {}
+    public ExtractTranslateResult nikudAndTranslateFromText(String hebrewText) throws Exception {
+        String instructions =
+                "Tu es un expert en hébreu (textes religieux) et en traduction française.\n" +
+                "Objectif: à partir d'un texte hébreu, produire une version avec niqqud, et traduire en français.\n" +
+                "Réponds STRICTEMENT en JSON valide, sans texte autour.\n" +
+                "Clés attendues: hebrew_plain, hebrew_niqqud, french.\n" +
+                "Conserve la structure (retours à la ligne). Ne rajoute pas d'explications.";
 
-    String name = p.getFileName().toString().toLowerCase(Locale.ROOT);
-    if (name.endsWith(".png")) return "image/png";
-    if (name.endsWith(".webp")) return "image/webp";
-    if (name.endsWith(".jpeg")) return "image/jpeg";
-    return "image/jpeg";
-  }
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("model", model);
+        payload.put("instructions", instructions);
 
-  public static class OpenAiApiException extends RuntimeException {
-    private final int statusCode;
-    public OpenAiApiException(int statusCode, String message) {
-      super("OpenAI API error " + statusCode + ": " + message);
-      this.statusCode = statusCode;
+        List<Object> input = new ArrayList<>();
+        Map<String, Object> msg = new LinkedHashMap<>();
+        msg.put("role", "user");
+        msg.put("content", List.of(
+                Map.of("type", "input_text", "text",
+                        "Texte hébreu:\n" + hebrewText + "\n\nRetourne le JSON demandé.")
+        ));
+        input.add(msg);
+        payload.put("input", input);
+
+        String out = callResponses(payload);
+        JsonNode json = parseJsonObject(out);
+
+        return new ExtractTranslateResult(
+                safeText(json, "hebrew_plain"),
+                safeText(json, "hebrew_niqqud"),
+                safeText(json, "french")
+        );
     }
-    public int getStatusCode() { return statusCode; }
-  }
+
+    private String callResponses(Map<String, Object> payload) throws Exception {
+        String body = om.writeValueAsString(payload);
+
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create("https://api.openai.com/v1/responses"))
+                .timeout(Duration.ofSeconds(120))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        if (resp.statusCode() >= 300) {
+            throw new RuntimeException("OpenAI API error " + resp.statusCode() + ": " + resp.body());
+        }
+
+        JsonNode root = om.readTree(resp.body());
+
+        // D'après la spec Responses, il peut y avoir "output_text"
+        if (root.hasNonNull("output_text")) {
+            return root.get("output_text").asText();
+        }
+
+        // Sinon, on reconstruit depuis output[].content[]
+        StringBuilder sb = new StringBuilder();
+        JsonNode output = root.get("output");
+        if (output != null && output.isArray()) {
+            for (JsonNode item : output) {
+                JsonNode content = item.get("content");
+                if (content != null && content.isArray()) {
+                    for (JsonNode c : content) {
+                        if (c.has("type") && "output_text".equals(c.get("type").asText()) && c.has("text")) {
+                            sb.append(c.get("text").asText());
+                        }
+                    }
+                }
+            }
+        }
+        String s = sb.toString().trim();
+        if (s.isBlank()) {
+            throw new RuntimeException("OpenAI: output_text vide (réponse inattendue). Body=" + resp.body());
+        }
+        return s;
+    }
+
+    private JsonNode parseJsonObject(String s) throws Exception {
+        String trimmed = s.trim();
+
+        // parfois le modèle renvoie un bloc ```json ... ```
+        trimmed = trimmed.replaceAll("^```json\\s*", "").replaceAll("^```\\s*", "").replaceAll("\\s*```$", "").trim();
+
+        // si du texte entoure, on extrait le premier { ... }
+        int start = trimmed.indexOf('{');
+        int end = trimmed.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            trimmed = trimmed.substring(start, end + 1);
+        }
+
+        return om.readTree(trimmed);
+    }
+
+    private static String safeText(JsonNode node, String field) {
+        JsonNode v = node.get(field);
+        return (v == null || v.isNull()) ? "" : v.asText("");
+    }
+
+    private static String guessMime(Path p) {
+        String name = p.getFileName().toString().toLowerCase();
+        if (name.endsWith(".png")) return "image/png";
+        if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
+        return "application/octet-stream";
+    }
 }
